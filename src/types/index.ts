@@ -3,14 +3,17 @@ export interface Movie {
   id?: string; // fallback vì API có thể trả id hoặc _id
   title: string;
   poster: string;
-  url: string; // URL redirect Ž` ¯Ÿ xem phim
-  actressIds: string[]; // ho §úc actresses: Actress[]
+  url: string; // URL redirect để xem phim
+  actressIds: string[]; // hoặc actresses: Actress[]
 }
 
 export interface Actress {
   _id: string;
+  id?: string; // fallback
   name: string;
   avatar: string;
   movieCount?: number;
-  movies?: Movie[]; // n §¨u API tr §œ kA"m
+  votes?: number; // số lượt vote
+  updatedAt?: string; // ISO date
+  movies?: Movie[]; // nếu API trả kèm
 }

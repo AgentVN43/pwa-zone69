@@ -27,10 +27,16 @@ export const getMoviesById = (id: string) => api<Movie>(`/movies/${id}`);
 
 export const getActresses = () => api<Actress[]>("/actresses");
 export const getActressById = (id: string) => api<Actress>(`/actresses/${id}`);
+
+export const postActress = (name: string) => api<Actress>(`/actresses`, { method: "POST", body: JSON.stringify({ name }) });
+export const postMovie = (title: string, cast: string[] = []) => api<Movie>(`/movies`, { method: "POST", body: JSON.stringify({ title, cast: cast.length > 0 ? cast : undefined }) });
+
 export const voteActress = (id: string) =>
   api<void>(`/actresses/${id}/vote`, { method: "POST" });
+
 export const importMovies = (data: Movie[]) =>
   api<void>("/movies/import", { method: "POST", body: JSON.stringify(data) });
+
 export const importActresses = (data: Actress[]) =>
   api<void>("/actresses/import", {
     method: "POST",

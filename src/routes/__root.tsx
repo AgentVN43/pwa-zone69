@@ -1,16 +1,24 @@
 import { createRootRoute, Outlet, Link } from "@tanstack/react-router";
-import { Suspense } from "react";
+import { Drawer } from "@/components/Drawer";
+import { DrawerMenu } from "@/components/DrawerMenu";
+import { Suspense, useState } from "react";
 
 const LazyFallback = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
     <div className="text-center text-sm text-slate-400">
-      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Loading</p>
-      <p className="mt-3 text-base font-semibold text-white">Syncing content...</p>
+      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+        Loading
+      </p>
+      <p className="mt-3 text-base font-semibold text-white">
+        Syncing content...
+      </p>
     </div>
   </div>
 );
 
 function RootComponent() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="relative isolate flex min-h-screen flex-col overflow-hidden">
@@ -31,16 +39,36 @@ function RootComponent() {
               </span>
               <span className="flex flex-col text-left leading-tight">
                 <span>Zone69</span>
-                <span className="text-xs font-normal text-slate-400">Progressive Web App</span>
+                <span className="text-xs font-normal text-slate-400">
+                  Progressive Web App
+                </span>
               </span>
             </Link>
 
             <div className="flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.3em] text-slate-400">
-              <span className="rounded-full border border-white/10 px-3 py-1">Tailwind</span>
+              <span className="rounded-full border border-white/10 px-3 py-1">
+                Tailwind
+              </span>
+              <button
+                onClick={() => setDrawerOpen(true)}
+                className="ml-2 flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 hover:border-white/30 transition text-white hover:text-blue-200 sm:hidden"
+                aria-label="Open menu"
+              >
+                ☰
+              </button>
               <span className="hidden rounded-full border border-white/10 px-3 py-1 sm:inline-flex">Offline</span>
             </div>
           </div>
         </header>
+
+        {/* Drawer */}
+        <Drawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          title="Menu"
+        >
+          <DrawerMenu onClose={() => setDrawerOpen(false)} />
+        </Drawer>
 
         <main className="flex-1">
           <Suspense fallback={<LazyFallback />}>

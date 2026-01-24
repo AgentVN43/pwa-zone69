@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MoviesMovieIdRouteImport } from './routes/movies.$movieId'
 import { Route as ActressesActressIdRouteImport } from './routes/actresses.$actressId'
 
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +37,47 @@ const ActressesActressIdRoute = ActressesActressIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/actresses/$actressId': typeof ActressesActressIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/actresses/$actressId': typeof ActressesActressIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chat': typeof ChatRoute
   '/actresses/$actressId': typeof ActressesActressIdRoute
   '/movies/$movieId': typeof MoviesMovieIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/actresses/$actressId' | '/movies/$movieId'
+  fullPaths: '/' | '/chat' | '/actresses/$actressId' | '/movies/$movieId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/actresses/$actressId' | '/movies/$movieId'
-  id: '__root__' | '/' | '/actresses/$actressId' | '/movies/$movieId'
+  to: '/' | '/chat' | '/actresses/$actressId' | '/movies/$movieId'
+  id: '__root__' | '/' | '/chat' | '/actresses/$actressId' | '/movies/$movieId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatRoute: typeof ChatRoute
   ActressesActressIdRoute: typeof ActressesActressIdRoute
   MoviesMovieIdRoute: typeof MoviesMovieIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatRoute: ChatRoute,
   ActressesActressIdRoute: ActressesActressIdRoute,
   MoviesMovieIdRoute: MoviesMovieIdRoute,
 }

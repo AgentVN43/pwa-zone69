@@ -66,15 +66,23 @@ export function ActressDetail({ actressId }: Props) {
 
   const hasMovies = Boolean(actress.movies && actress.movies.length > 0);
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "/";
+    }
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-        <Link
-          to="/"
+        <button
+          onClick={handleBack}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-white transition hover:border-white/40"
         >
-          Back
-        </Link>
+          ← Back
+        </button>
         <span className="rounded-full border border-white/10 px-3 py-1 text-[0.65rem] uppercase tracking-[0.35em]">
           Profile
         </span>
@@ -125,18 +133,30 @@ export function ActressDetail({ actressId }: Props) {
             type="button"
             onClick={() => vote()}
             disabled={isVoting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-400/40 bg-blue-600/80 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-400/40 bg-blue-600/80 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70 min-h-[48px]"
           >
-            {isVoting ? "Voting..." : "Vote for this profile"}
+            <span>{isVoting ? "⏳" : "👍"}</span>
+            <span>{isVoting ? "Voting..." : `Vote (${actress.votes ?? 0})`}</span>
           </button>
 
-          <div className="rounded-3xl border border-white/5 bg-slate-900/60 p-4 text-center">
-            <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
-              Movies tracked
-            </p>
-            <p className="mt-3 text-3xl font-semibold text-white">
-              {actress.movieCount ?? actress.movies?.length ?? 0}
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-3xl border border-white/5 bg-slate-900/60 p-4 text-center">
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
+                Movies tracked
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-white">
+                {actress.movieCount ?? actress.movies?.length ?? 0}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/5 bg-slate-900/60 p-4 text-center">
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
+                Total votes
+              </p>
+              <p className="mt-3 text-3xl font-semibold text-blue-300">
+                {actress.votes ?? 0}
+              </p>
+            </div>
           </div>
         </div>
 

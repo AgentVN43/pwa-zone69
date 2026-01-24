@@ -60,16 +60,24 @@ export function MovieDetail({ movieId }: Props) {
     );
   }
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = "/";
+    }
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-        <Link
-          to="/"
+        <button
+          onClick={handleBack}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-white transition hover:border-white/40"
         >
           ← Back
-        </Link>
+        </button>
         <span className="rounded-full border border-white/10 px-3 py-1 text-[0.65rem] uppercase tracking-[0.35em]">
           Movie Details
         </span>
