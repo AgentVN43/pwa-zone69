@@ -27,9 +27,14 @@ export const getMoviesById = (id: string) => api<Movie>(`/movies/${id}`);
 
 export const getActresses = () => api<Actress[]>("/actresses");
 export const getActressById = (id: string) => api<Actress>(`/actresses/${id}`);
+export const searchActresses = (query: string) => api<Actress[]>(`/actresses/search?q=${encodeURIComponent(query)}`);
 
 export const postActress = (name: string) => api<Actress>(`/actresses`, { method: "POST", body: JSON.stringify({ name }) });
 export const postMovie = (title: string, cast: string[] = []) => api<Movie>(`/movies`, { method: "POST", body: JSON.stringify({ title, cast: cast.length > 0 ? cast : undefined }) });
+export const searchMovies = async (query: string) => {
+  const response = await api<{ success: boolean; results: Movie[] }>(`/movies/search?q=${encodeURIComponent(query)}`);
+  return response.results;
+};
 
 export const voteActress = (id: string) =>
   api<void>(`/actresses/${id}/vote`, { method: "POST" });

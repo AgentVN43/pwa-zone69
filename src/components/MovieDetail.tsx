@@ -160,14 +160,21 @@ export function MovieDetail({ movieId }: Props) {
                 </div>
               )} */}
 
-              <div>
-                <h2 className="text-lg font-semibold text-white mb-3">Cast</h2>
-                {movie.cast.map((actress) => (
-                  <span key={actress._id} className="text-blue-300">
-                    {actress.name}
-                  </span>
-                ))}
-              </div>
+              {movie.cast && movie.cast.length > 0 && (
+                <div>
+                  <h2 className="text-lg font-semibold text-white mb-3">Cast</h2>
+                  <div className="space-y-2">
+                    {movie.cast.map((actress) => (
+                      <span
+                        key={actress._id}
+                        className="inline-block bg-slate-700/50 border border-white/10 px-3 py-1 rounded-full text-sm text-blue-300"
+                      >
+                        {actress.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Metadata */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-white/10">

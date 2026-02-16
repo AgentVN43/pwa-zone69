@@ -1,24 +1,38 @@
-import { useChat } from "@/hooks/useChat";
 import { ChatDialog } from "@/components/ChatDialog";
-import { useEffect, useRef } from "react";
+import { useChat } from "@/hooks/useChat";
+import type { Actress, Movie } from "@/types";
 import dayjs from "dayjs";
+import { useEffect, useRef } from "react";
 
 export function Chat() {
   const {
     messages,
     input,
     setInput,
+    addMessage,
     handleSend,
     handleAddActress,
     handleAddMovie,
     handleAssignMovie,
+    handleSearchActress,
+    handleSearchMovies,
+    handleSelectMovie,
+    handleLinkMovie,
     isLoading,
     pending,
     syncPending,
     dialogMode,
+    setDialogMode,
     recentActresses,
     selectedActresses,
     setSelectedActresses,
+    searchResults,
+    setSearchResults,
+    setSearchQuery,
+    setSelectedActressForMovie,
+    allMovies,
+    pendingMovieForLink,
+    setPendingMovieForLink,
   } = useChat();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,7 +62,7 @@ export function Chat() {
             <button
               onClick={syncPending}
               disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600/20 border border-blue-400/40 px-3 py-2 text-xs font-semibold text-blue-200 hover:bg-blue-600/30 disabled:opacity-50 transition min-h-[40px]"
+              className="inline-flex items-center gap-2 rounded-full bg-blue-600/20 border border-blue-400/40 px-3 py-2 text-xs font-semibold text-blue-200 hover:bg-blue-600/30 disabled:opacity-50 transition min-h-10"
             >
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping" />
@@ -91,14 +105,27 @@ export function Chat() {
           <div className="flex justify-start w-full">
             <ChatDialog
               mode={dialogMode}
-              onSubmit={
-                dialogMode === "add-actress"
-                  ? handleAddActress
-                  : dialogMode === "assign-actresses"
-                  ? handleAssignMovie
-                  : handleAddMovie
-              }
+              onSubmit={(value) => {
+                if (dialogMode === "add-actress") {
+                  handleAddActress(typeof value === "string" ? value : "");
+                } else if (dialogMode === "assign-actresses") {
+                  handleAssignMovie(
+                    Array.isArray(value) ? value : selectedActresses
+                  );
+                } else if (dialogMode === "search-movie") {
+                  // Handled by onSelectSearchResult
+                } else if (dialogMode === "search-actress") {
+                  // Handled by onSelectSearchResult
+                } else {
+                  handleAddMovie(typeof value === "string" ? value : "");
+                }
+              }}
               isLoading={isLoading}
+              onClose={() => {
+                setDialogMode(null);
+                setSearchResults([]);
+                setSearchQuery("");
+              }}
               recentActresses={recentActresses}
               selectedActresses={selectedActresses}
               onSelectActress={(id) => {
@@ -108,6 +135,34 @@ export function Chat() {
                     : [...prev, id]
                 );
               }}
+              searchResults={searchResults}
+              onSearch={(query) => {
+                if (dialogMode === "assign-actresses") {
+                  // For assign-actresses, search all actresses
+                  handleSearchActress(query);
+                } else if (dialogMode === "search-actress") {
+                  // For link-movie actress search
+                  handleSearchActress(query);
+                } else if (dialogMode === "search-movie") {
+                  // For search movie
+                  handleSearchMovies(query);
+                }
+              }}
+              onSelectSearchResult={(item) => {
+                if (dialogMode === "search-movie") {
+                  handleSelectMovie(item as Movie);
+                } else if (dialogMode === "search-actress") {
+                  setSelectedActressForMovie(item as Actress);
+                  addMessage(`Selected: ${(item as Actress).name}`, true);
+                  if (pendingMovieForLink) {
+                    const movieId = pendingMovieForLink._id || pendingMovieForLink.id;
+                    if (movieId) {
+                      handleLinkMovie(movieId, (item as Actress)._id);
+                    }
+                  }
+                }
+              }}
+              allMovies={allMovies}
             />
           </div>
         )}
@@ -128,7 +183,7 @@ export function Chat() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type command... (e.g., /add-actress)"
               disabled={isLoading || !!dialogMode}
-              className="flex-1 rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-400 focus:border-blue-400/50 focus:outline-none disabled:opacity-50 min-h-[44px]"
+              className="flex-1 rounded-2xl bg-slate-800 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-400 focus:border-blue-400/50 focus:outline-none disabled:opacity-50 min-h-11"
             />
             <button
               type="submit"
@@ -147,20 +202,51 @@ export function Chat() {
           {/* Quick commands hint */}
           {!dialogMode && (
             <div className="flex gap-2 overflow-x-auto pb-1">
-              <button
-                type="button"
-                onClick={() => setInput("/add-actress")}
-                className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-[40px]"
-              >
-                📝 Add Actress
-              </button>
-              <button
-                type="button"
-                onClick={() => setInput("/add-movie")}
-                className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-[40px]"
-              >
-                🎬 Add Movie
-              </button>
+              {pendingMovieForLink && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogMode("search-actress");
+                    }}
+                    className="whitespace-nowrap rounded-full border border-blue-400/40 bg-blue-600/20 hover:bg-blue-600/30 px-3 py-2 text-xs font-semibold text-blue-200 transition min-h-10"
+                  >
+                    🔗 Link Now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingMovieForLink(null)}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-10"
+                  >
+                    Skip
+                  </button>
+                </>
+              )}
+              {!pendingMovieForLink && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setInput("/add-actress")}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-10"
+                  >
+                    📝 Add Actress
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInput("/add-movie")}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-10"
+                  >
+                    🎬 Add Movie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInput("/link-movie")}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-10"
+                  >
+                    🔗 Link Movie
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -4,7 +4,8 @@ export interface Movie {
   title: string;
   poster: string;
   url: string; // URL redirect để xem phim
-  actressIds: string[]; // hoặc actresses: Actress[]
+  actressIds?: string[]; // hoặc actresses: Actress[]
+  cast?: Actress[]; // cast info nếu API trả kèm
 }
 
 export interface Actress {

@@ -1,5 +1,12 @@
 import { useState, useCallback } from "react";
-import { postActress, postMovie } from "@/services/api";
+import {
+  postActress,
+  postMovie,
+  searchActresses,
+  searchMovies,
+  getMovies,
+} from "@/services/api";
+import type { Actress, Movie } from "@/types";
 
 export interface ChatMessage {
   id: string;
@@ -22,7 +29,19 @@ export interface RecentActress {
   addedAt: Date;
 }
 
-export type DialogMode = null | "add-actress" | "add-movie" | "assign-actresses";
+export type DialogMode =
+  | null
+  | "add-actress"
+  | "add-movie"
+  | "assign-actresses"
+  | "search-actress"
+  | "search-movie";
+
+// Helper to get error message safely
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -41,19 +60,24 @@ export function useChat() {
   const [recentActresses, setRecentActresses] = useState<RecentActress[]>([]);
   const [selectedActresses, setSelectedActresses] = useState<string[]>([]);
   const [pendingMovieTitle, setPendingMovieTitle] = useState("");
-
-  const addMessage = useCallback(
-    (text: string, isUser: boolean = true) => {
-      const message: ChatMessage = {
-        id: `msg-${Date.now()}-${Math.random()}`,
-        text,
-        isUser,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, message]);
-    },
-    []
+  const [searchResults, setSearchResults] = useState<Actress[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedActressForMovie, setSelectedActressForMovie] =
+    useState<Actress | null>(null);
+  const [pendingMovieForLink, setPendingMovieForLink] = useState<Movie | null>(
+    null,
   );
+  const [allMovies, setAllMovies] = useState<Movie[]>([]);
+
+  const addMessage = useCallback((text: string, isUser: boolean = true) => {
+    const message: ChatMessage = {
+      id: `msg-${Date.now()}-${Math.random()}`,
+      text,
+      isUser,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, message]);
+  }, []);
 
   const saveForLater = useCallback(
     (item: Omit<PendingItem, "id" | "timestamp" | "status">) => {
@@ -67,14 +91,14 @@ export function useChat() {
 
       // Save to localStorage
       const existing = JSON.parse(
-        localStorage.getItem("pending-items") || "[]"
+        localStorage.getItem("pending-items") || "[]",
       );
       localStorage.setItem(
         "pending-items",
-        JSON.stringify([...existing, pendingItem])
+        JSON.stringify([...existing, pendingItem]),
       );
     },
-    []
+    [],
   );
 
   const syncPending = useCallback(async () => {
@@ -92,9 +116,7 @@ export function useChat() {
 
         // Update status
         setPending((prev) =>
-          prev.map((p) =>
-            p.id === item.id ? { ...p, status: "synced" } : p
-          )
+          prev.map((p) => (p.id === item.id ? { ...p, status: "synced" } : p)),
         );
       } catch (err) {
         console.error("Sync failed:", err);
@@ -124,83 +146,187 @@ export function useChat() {
             addedAt: new Date(),
           },
         ]);
-      } catch (err) {
-        addMessage(
-          `⚠️ Saved for later (offline)\n${name} will be added when you go online`,
-          false
-        );
-        saveForLater({ type: "actress", data: { name: name.trim() } });
+      } catch (err: unknown) {
+        // Check if it's a network error (offline) or server error
+        const isNetworkError =
+          !navigator.onLine ||
+          getErrorMessage(err).includes("Failed to fetch") ||
+          getErrorMessage(err).includes("Network");
+
+        if (isNetworkError) {
+          // Network/offline error → save for later
+          addMessage(
+            `⚠️ Saved for later (offline)\n${name} will be added when you go online`,
+            false,
+          );
+          saveForLater({ type: "actress", data: { name: name.trim() } });
+        } else {
+          // Server error → show actual error message
+          const errorMsg = getErrorMessage(err) || "Failed to add actress";
+          addMessage(`❌ ${errorMsg}`, false);
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [addMessage, saveForLater]
+    [addMessage, saveForLater],
   );
 
-  const handleAddMovie = useCallback(
-    async (title: string) => {
+  // Replace old handleAddMovie - always ask for actresses
+  const handleAddMovieNew = useCallback(
+    (title: string) => {
       if (!title.trim()) return;
 
-      // If have recent actresses, show assignment dialog
-      if (recentActresses.length > 0) {
-        addMessage(`Movie title: ${title}`, true);
-        setPendingMovieTitle(title);
-        setSelectedActresses([]);
-        setDialogMode("assign-actresses");
-        return;
-      }
-
-      // Otherwise add movie directly
-      addMessage(`Adding movie: ${title}...`, true);
-      setIsLoading(true);
-      setDialogMode(null);
-
-      try {
-        await postMovie(title.trim());
-        addMessage(`✅ Successfully added movie: ${title}`, false);
-      } catch (err) {
-        addMessage(
-          `⚠️ Saved for later (offline)\n${title} will be added when you go online`,
-          false
-        );
-        saveForLater({ type: "movie", data: { title: title.trim() } });
-      } finally {
-        setIsLoading(false);
-      }
+      // Always show actress selection dialog first
+      addMessage(`Movie title: ${title}`, true);
+      setPendingMovieTitle(title);
+      setSelectedActresses([]);
+      setDialogMode("assign-actresses");
+      addMessage("Select actresses for this movie (optional):", false);
     },
-    [addMessage, saveForLater, recentActresses]
+    [addMessage],
   );
 
   const handleAssignMovie = useCallback(
     async (actressIds: string[]) => {
       if (!pendingMovieTitle.trim()) return;
 
+      const castCount = actressIds.length;
       addMessage(
-        `Adding movie: ${pendingMovieTitle} → ${selectedActresses.length} actresses`,
-        true
+        `Adding movie: ${pendingMovieTitle}${castCount > 0 ? ` with ${castCount} actress(es)` : ""}...`,
+        true,
       );
       setIsLoading(true);
       setDialogMode(null);
 
       try {
+        // POST /movies with title and cast
         await postMovie(pendingMovieTitle.trim(), actressIds);
-        addMessage(
-          `✅ Successfully added movie: ${pendingMovieTitle}\nAssigned to ${actressIds.length} actress(es)`,
-          false
-        );
+
+        const castMsg =
+          castCount > 0
+            ? `✅ Added movie: ${pendingMovieTitle}\nWith ${castCount} actress(es)`
+            : `✅ Added movie: ${pendingMovieTitle}`;
+        addMessage(castMsg, false);
+
         setPendingMovieTitle("");
         setSelectedActresses([]);
-      } catch (err) {
-        addMessage(
-          `⚠️ Saved for later (offline)\n${pendingMovieTitle} will be added when you go online`,
-          false
-        );
-        saveForLater({ type: "movie", data: { title: pendingMovieTitle.trim() } });
+      } catch (err: unknown) {
+        // Check if it's a network error (offline) or server error
+        const isNetworkError =
+          !navigator.onLine ||
+          getErrorMessage(err).includes("Failed to fetch") ||
+          getErrorMessage(err).includes("Network");
+
+        if (isNetworkError) {
+          // Network/offline error → save for later
+          addMessage(
+            `⚠️ Saved for later (offline)\n${pendingMovieTitle} will be added when you go online`,
+            false,
+          );
+          saveForLater({
+            type: "movie",
+            data: { title: pendingMovieTitle.trim() },
+          });
+        } else {
+          // Server error → show actual error message
+          const errorMsg = getErrorMessage(err) || "Failed to add movie";
+          addMessage(`❌ ${errorMsg}`, false);
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [pendingMovieTitle, selectedActresses, addMessage, saveForLater]
+    [pendingMovieTitle, addMessage, saveForLater],
+  );
+
+  const handleSearchActress = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const results = await searchActresses(query);
+      setSearchResults(results);
+    } catch (err) {
+      console.error("Search failed:", err);
+      setSearchResults([]);
+    }
+  }, [setSearchQuery, setSearchResults]);
+
+  const handleSearchMovies = useCallback(async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const results = await searchMovies(query);
+      setSearchResults(results);
+    } catch (err) {
+      console.error("Search movies failed:", err);
+      setSearchResults([]);
+    }
+  }, [setSearchQuery, setSearchResults]);
+
+  const handleSelectMovie = useCallback(
+    (movie: Movie) => {
+      setPendingMovieForLink(movie);
+      addMessage(`Movie: ${movie.title}`, true);
+      addMessage("Now search for an actress to link", false);
+      setDialogMode("search-actress");
+      setSearchResults([]);
+      setSearchQuery("");
+    },
+    [addMessage],
+  );
+
+  const handleLinkMovie = useCallback(
+    async (movieId: string, actressId: string) => {
+      if (!movieId || !actressId) return;
+
+      const movieTitle = pendingMovieForLink?.title || "Movie";
+      addMessage(`Linking ${movieTitle} to actress...`, true);
+      setIsLoading(true);
+      setDialogMode(null);
+
+      try {
+        // Link movie to actress: POST /actresses/:id/movies
+        await fetch(`/api/actresses/${actressId}/movies`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ movieId }),
+        });
+
+        const actress = selectedActressForMovie?.name || "actress";
+        addMessage(`✅ Linked ${movieTitle} to ${actress}`, false);
+        setPendingMovieForLink(null);
+        setSelectedActressForMovie(null);
+        setSearchQuery("");
+        setSearchResults([]);
+      } catch (err: unknown) {
+        const isNetworkError =
+          !navigator.onLine ||
+          getErrorMessage(err).includes("Failed to fetch") ||
+          getErrorMessage(err).includes("Network");
+
+        if (isNetworkError) {
+          addMessage(
+            `⚠️ Saved for later (offline)\nWill link when you go online`,
+            false,
+          );
+        } else {
+          const errorMsg = getErrorMessage(err);
+          addMessage(`❌ ${errorMsg}`, false);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pendingMovieForLink, selectedActressForMovie, addMessage],
   );
 
   const handleSend = useCallback(async () => {
@@ -216,10 +342,20 @@ export function useChat() {
     } else if (command === "/add-movie") {
       addMessage("What's the movie title?", false);
       setDialogMode("add-movie");
+    } else if (command === "/link-movie") {
+      addMessage("Loading movies...", false);
+      try {
+        const movies = await getMovies();
+        setAllMovies(movies);
+        addMessage("Which movie to link? (Type to search)", false);
+        setDialogMode("search-movie");
+      } catch {
+        addMessage("❌ Failed to load movies", false);
+      }
     } else {
       addMessage(
-        "❓ Supported commands:\n📝 /add-actress\n🎬 /add-movie",
-        false
+        "❓ Supported commands:\n📝 /add-actress\n🎬 /add-movie\n🔗 /link-movie",
+        false,
       );
     }
   }, [input, addMessage]);
@@ -231,8 +367,12 @@ export function useChat() {
     addMessage,
     handleSend,
     handleAddActress,
-    handleAddMovie,
+    handleAddMovie: handleAddMovieNew,
     handleAssignMovie,
+    handleSearchActress,
+    handleSearchMovies,
+    handleSelectMovie,
+    handleLinkMovie,
     isLoading,
     pending,
     syncPending,
@@ -242,5 +382,14 @@ export function useChat() {
     selectedActresses,
     setSelectedActresses,
     pendingMovieTitle,
+    searchResults,
+    setSearchResults,
+    searchQuery,
+    setSearchQuery,
+    selectedActressForMovie,
+    setSelectedActressForMovie,
+    allMovies,
+    pendingMovieForLink,
+    setPendingMovieForLink,
   };
 }

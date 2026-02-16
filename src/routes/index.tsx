@@ -1,6 +1,7 @@
 import { ActressCard } from "@/components/ActressCard";
 import { useActresses } from "@/hooks/useActresses";
 import { createFileRoute } from "@tanstack/react-router";
+import type { Actress } from "@/types";
 import {
   sortByUpdateDate,
   getUpdateLabel,
@@ -30,10 +31,16 @@ function Home() {
       acc[label].push(actress);
       return acc;
     },
-    {} as Record<string, typeof actresses>
+    {} as Record<string, typeof actresses>,
   );
 
-  const updateOrder = ["Today", "Yesterday", "This week", "This month", "Earlier"];
+  const updateOrder = [
+    "Today",
+    "Yesterday",
+    "This week",
+    "This month",
+    "Earlier",
+  ];
   const orderedGroups = updateOrder.filter((key) => groupedActresses[key]);
 
   return (
@@ -115,7 +122,7 @@ function Home() {
                 key={`skeleton-${item}`}
                 className="flex h-full flex-col rounded-2xl border border-white/5 bg-slate-900/40 p-3"
               >
-                <div className="aspect-[3/4] w-full rounded-xl bg-slate-800/80" />
+                <div className="aspect-3/4 w-full rounded-xl bg-slate-800/80" />
                 <div className="mt-4 space-y-2">
                   <div className="h-4 w-3/4 rounded bg-slate-800/80" />
                   <div className="h-3 w-2/4 rounded bg-slate-800/60" />
@@ -136,7 +143,7 @@ function Home() {
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
-                {groupedActresses[label].map((actress, idx) => (
+                {groupedActresses[label].map((actress: Actress, idx: number) => (
                   <div key={actress._id} className="group relative">
                     <ActressCard actress={actress} index={idx + 1} />
                     {/* Update date tooltip on hover */}

@@ -25,7 +25,7 @@ export const useVoteActress = (actressId: string) => {
 
       return { previousData };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(
