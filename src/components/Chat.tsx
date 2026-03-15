@@ -18,6 +18,7 @@ export function Chat() {
     handleSearchMovies,
     handleSelectMovie,
     handleLinkMovie,
+    handleUpdateAvatar,
     isLoading,
     pending,
     syncPending,
@@ -33,6 +34,8 @@ export function Chat() {
     allMovies,
     pendingMovieForLink,
     setPendingMovieForLink,
+    pendingActressForAvatar,
+    setPendingActressForAvatar,
   } = useChat();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -146,6 +149,9 @@ export function Chat() {
                 } else if (dialogMode === "search-movie") {
                   // For search movie
                   handleSearchMovies(query);
+                } else if (dialogMode === "update-avatar") {
+                  // For update avatar actress search
+                  handleSearchActress(query);
                 }
               }}
               onSelectSearchResult={(item) => {
@@ -160,9 +166,14 @@ export function Chat() {
                       handleLinkMovie(movieId, (item as Actress)._id);
                     }
                   }
+                } else if (dialogMode === "update-avatar") {
+                  setPendingActressForAvatar(item as Actress);
+                  addMessage(`Selected: ${(item as Actress).name}`, true);
                 }
               }}
               allMovies={allMovies}
+              pendingActressForAvatar={pendingActressForAvatar}
+              onSubmitAvatar={handleUpdateAvatar}
             />
           </div>
         )}
@@ -245,8 +256,15 @@ export function Chat() {
                   >
                     🔗 Link Movie
                   </button>
-                </>
-              )}
+                  <button
+                    type="button"
+                    onClick={() => setInput("/avatar")}
+                    className="whitespace-nowrap rounded-full border border-white/10 bg-slate-800/50 hover:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white transition min-h-10"
+                  >
+                    🖼️ Update Avatar
+                  </button>
+                  </>
+                  )}
             </div>
           )}
         </div>

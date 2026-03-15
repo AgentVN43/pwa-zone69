@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Actress, Movie } from "@/types";
 
 interface Props {
-  mode: "add-actress" | "add-movie" | "assign-actresses" | "search-actress" | "search-movie";
+  mode: "add-actress" | "add-movie" | "assign-actresses" | "search-actress" | "search-movie" | "update-avatar";
   onSubmit: (value: string | string[]) => void;
   isLoading: boolean;
   onClose?: () => void;
@@ -13,6 +13,8 @@ interface Props {
   onSearch?: (query: string) => void;
   onSelectSearchResult?: (item: Actress | Movie) => void;
   allMovies?: Movie[];
+  pendingActressForAvatar?: Actress | null;
+  onSubmitAvatar?: (avatarUrl: string) => void;
 }
 
 export function ChatDialog({
@@ -27,6 +29,8 @@ export function ChatDialog({
   onSearch,
   onSelectSearchResult,
   allMovies = [],
+  pendingActressForAvatar = null,
+  onSubmitAvatar,
 }: Props) {
   const [value, setValue] = useState("");
   const [localSearchResults, setLocalSearchResults] = useState<Movie[]>([]);
@@ -35,6 +39,7 @@ export function ChatDialog({
   const isAssign = mode === "assign-actresses";
   const isSearchMovie = mode === "search-movie";
   const isSearchActress = mode === "search-actress";
+  const isUpdateAvatar = mode === "update-avatar";
 
   const displayResults = searchResults;
 
@@ -207,6 +212,129 @@ export function ChatDialog({
                <p className="mt-3 text-xs text-slate-400">No movies found</p>
              )}
         </div>
+      </div>
+    );
+  }
+
+  if (isUpdateAvatar) {
+    // If actress not selected, show search dialog
+    if (!pendingActressForAvatar) {
+      return (
+        <div className="my-4 rounded-2xl border border-white/10 bg-slate-900/40 p-4 w-full max-w-md">
+          <div className="flex items-center justify-between mb-4">
+            <label className="block text-sm font-semibold text-slate-300">
+              🖼️ Update Avatar
+            </label>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-slate-400 hover:text-white transition"
+              aria-label="Close dialog"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="mb-4">
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                onSearch?.(e.target.value);
+              }}
+              placeholder="Search actress name..."
+              disabled={isLoading}
+              autoFocus
+              className="w-full rounded-xl bg-slate-800 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-blue-400/50 focus:outline-none disabled:opacity-50 min-h-11"
+            />
+
+            {/* Search Results */}
+            {isLoading && value.trim() && (
+              <div className="mt-3 text-xs text-slate-400">Searching...</div>
+            )}
+            {!isLoading && displayResults.length > 0 && (
+              <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                {displayResults.map((item) => {
+                  const itemName = 'name' in item ? item.name : item.title;
+                  const icon = 'name' in item ? "👤" : "🎬";
+                  return (
+                    <button
+                      key={item._id || item.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectSearchResult?.(item);
+                        setValue("");
+                      }}
+                      className="w-full text-left flex items-center gap-2 p-2 rounded-lg bg-slate-700/50 hover:bg-slate-600 transition text-white"
+                    >
+                      <span>{icon}</span>
+                      <span className="text-sm">{itemName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {!isLoading && value.trim() && displayResults.length === 0 && (
+              <p className="mt-3 text-xs text-slate-400">No results found</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // If actress selected, show avatar input
+    return (
+      <div className="my-4 rounded-2xl border border-white/10 bg-slate-900/40 p-4 w-full max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <label className="block text-sm font-semibold text-slate-300">
+            🖼️ Avatar for {pendingActressForAvatar.name}
+          </label>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-white transition"
+            aria-label="Close dialog"
+          >
+            ✕
+          </button>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (value.trim()) {
+              onSubmitAvatar?.(value);
+              setValue("");
+            }
+          }}
+          className="space-y-3"
+        >
+          <input
+            type="url"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Enter avatar URL..."
+            disabled={isLoading}
+            autoFocus
+            className="w-full rounded-xl bg-slate-800 border border-white/10 px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-blue-400/50 focus:outline-none disabled:opacity-50 min-h-11"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !value.trim()}
+            className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed px-4 py-2 text-sm font-semibold text-white transition min-h-11 flex items-center justify-center"
+          >
+            {isLoading ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Updating...
+              </>
+            ) : (
+              <>
+                <span className="mr-2">🖼️</span>
+                Update Avatar
+              </>
+            )}
+          </button>
+        </form>
       </div>
     );
   }

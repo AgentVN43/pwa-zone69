@@ -5,6 +5,7 @@ import {
   searchActresses,
   searchMovies,
   getMovies,
+  updateActressAvatar,
 } from "@/services/api";
 import type { Actress, Movie } from "@/types";
 
@@ -35,7 +36,8 @@ export type DialogMode =
   | "add-movie"
   | "assign-actresses"
   | "search-actress"
-  | "search-movie";
+  | "search-movie"
+  | "update-avatar";
 
 // Helper to get error message safely
 function getErrorMessage(err: unknown): string {
@@ -68,6 +70,7 @@ export function useChat() {
     null,
   );
   const [allMovies, setAllMovies] = useState<Movie[]>([]);
+  const [pendingActressForAvatar, setPendingActressForAvatar] = useState<Actress | null>(null);
 
   const addMessage = useCallback((text: string, isUser: boolean = true) => {
     const message: ChatMessage = {
@@ -329,6 +332,43 @@ export function useChat() {
     [pendingMovieForLink, selectedActressForMovie, addMessage],
   );
 
+  const handleUpdateAvatar = useCallback(
+    async (avatarUrl: string) => {
+      if (!pendingActressForAvatar?._id) return;
+
+      const actressName = pendingActressForAvatar.name;
+      addMessage(`Updating avatar for ${actressName}...`, true);
+      setIsLoading(true);
+      setDialogMode(null);
+
+      try {
+        await updateActressAvatar(pendingActressForAvatar._id, avatarUrl);
+        addMessage(`✅ Updated avatar for ${actressName}`, false);
+        setPendingActressForAvatar(null);
+        setSearchResults([]);
+        setSearchQuery("");
+      } catch (err: unknown) {
+        const isNetworkError =
+          !navigator.onLine ||
+          getErrorMessage(err).includes("Failed to fetch") ||
+          getErrorMessage(err).includes("Network");
+
+        if (isNetworkError) {
+          addMessage(
+            `⚠️ Saved for later (offline)\nWill update avatar when you go online`,
+            false,
+          );
+        } else {
+          const errorMsg = getErrorMessage(err);
+          addMessage(`❌ ${errorMsg}`, false);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [pendingActressForAvatar, addMessage],
+  );
+
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
 
@@ -352,9 +392,12 @@ export function useChat() {
       } catch {
         addMessage("❌ Failed to load movies", false);
       }
+    } else if (command === "/avatar") {
+      addMessage("Search actress to update avatar", false);
+      setDialogMode("update-avatar");
     } else {
       addMessage(
-        "❓ Supported commands:\n📝 /add-actress\n🎬 /add-movie\n🔗 /link-movie",
+        "❓ Supported commands:\n📝 /add-actress\n🎬 /add-movie\n🔗 /link-movie\n🖼️ /avatar",
         false,
       );
     }
@@ -373,6 +416,7 @@ export function useChat() {
     handleSearchMovies,
     handleSelectMovie,
     handleLinkMovie,
+    handleUpdateAvatar,
     isLoading,
     pending,
     syncPending,
@@ -391,5 +435,7 @@ export function useChat() {
     allMovies,
     pendingMovieForLink,
     setPendingMovieForLink,
+    pendingActressForAvatar,
+    setPendingActressForAvatar,
   };
 }

@@ -39,6 +39,9 @@ export const searchMovies = async (query: string) => {
 export const voteActress = (id: string) =>
   api<void>(`/actresses/${id}/vote`, { method: "POST" });
 
+export const updateActressAvatar = (id: string, avatar: string) =>
+  api<Actress>(`/actresses/${id}`, { method: "PUT", body: JSON.stringify({ avatar }) });
+
 export const importMovies = (data: Movie[]) =>
   api<void>("/movies/import", { method: "POST", body: JSON.stringify(data) });
 
